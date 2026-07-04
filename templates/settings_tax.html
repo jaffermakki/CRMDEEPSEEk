@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <h1 class="text-2xl font-bold mb-6">Tax Settings</h1>
+    <div class="bg-white shadow rounded-lg p-6">
+        <form method="post" action="/settings/tax">
+            <div id="tax-rules">
+                {% for rule in tax_rules %}
+                <div class="flex items-center gap-4 mb-3">
+                    <input name="name[]" value="{{ rule.name }}" placeholder="Tax name" class="flex-1 border rounded p-2">
+                    <input name="rate[]" value="{{ rule.rate }}" type="number" step="0.001" placeholder="0.13" class="w-24 border rounded p-2">
+                    <label><input type="checkbox" name="compound[]" value="{{ rule.id }}" {% if rule.is_compound %}checked{% endif %}> Compound</label>
+                    <button type="button" onclick="this.parentElement.remove()" class="text-red-500">✕</button>
+                </div>
+                {% endfor %}
+            </div>
+            <button type="button" onclick="addRule()" class="text-brand-600 text-sm">+ Add Tax Rule</button>
+            <div class="mt-4"><button class="btn-primary">Save Tax Rules</button></div>
+        </form>
+    </div>
+</div>
+<script>
+function addRule() {
+    const container = document.getElementById('tax-rules');
+    const div = document.createElement('div');
+    div.className = 'flex items-center gap-4 mb-3';
+    div.innerHTML = `
+        <input name="name[]" placeholder="Tax name" class="flex-1 border rounded p-2">
+        <input name="rate[]" type="number" step="0.001" placeholder="0.13" class="w-24 border rounded p-2">
+        <label><input type="checkbox" name="compound[]" value=""> Compound</label>
+        <button type="button" onclick="this.parentElement.remove()" class="text-red-500">✕</button>
+    `;
+    container.appendChild(div);
+}
+</script>
+{% endblock %}
