@@ -176,3 +176,27 @@ def dashboard(
     # Now use tenant to filter everything
     products = db.query(Product).filter(Product.tenant_id == tenant.id).all()
     return templates.TemplateResponse("dashboard.html", {...})
+@app.post("/settings/tax")
+def save_tax_rules(
+    request: Request,
+    name: List[str] = Form(...),
+    rate: List[float] = Form(...),
+    compound: List[str] = Form([]),  # only checked boxes send their value
+    db: Session = Depends(get_db),
+    tenant: Tenant = Depends(get_current_tenant),
+    staff: Staff = Depends(require_permission("settings"))
+):
+    # Delete existing rules for this tenant
+    db.query(TaxRule).filter(TaxRule.tenant_id == tenant.id).delete()
+    # Insert new ones
+    for i, n in enumerate(name):
+        rule = TaxRule(
+            tenant_id=tenant.id,
+            name=n,
+            rate=rate[i],
+            is_compound=(compound[i] == 'on') if i < len(compound) else False,
+            priority=i
+        )
+        db.add(rule)
+    db.commit()
+    return RedirectResponse("/settings", status_code=303)
