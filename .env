@@ -1,0 +1,4 @@
+SECRET_KEY=your-super-secret-key-here-change-in-production
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=60
+REFRESH_TOKEN_EXPIRE_DAYS=7
