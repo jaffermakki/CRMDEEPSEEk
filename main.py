@@ -62,3 +62,81 @@ def add_repair(request: Request, name: str = Form(...), phone: str = Form(...), 
 
 @app.get("/login")
 def login_page(request: Request): return templates.TemplateResponse("login.html", {"error": None})
+
+from modules.purchasing.services import PurchaseOrderService
+from modules.expenses.services import ExpenseService, EmployeeService
+
+# --- SUPPLIERS ---
+@app.get("/suppliers")
+def suppliers_page(request: Request, db: Session = Depends(get_db)):
+    staff = get_current_staff(request, db)
+    if not staff or not role_allowed(staff, "owner", "manager"): return RedirectResponse("/login")
+    suppliers = db.query(Supplier).all()
+    return templates.TemplateResponse("suppliers.html", {"staff": staff, "suppliers": suppliers})
+
+@app.post("/suppliers/add")
+def supplier_add(request: Request, name: str = Form(...), contact_name: str = Form(""), phone: str = Form(""), email: str = Form(""), payment_terms: str = Form("NET30"), db: Session = Depends(get_db)):
+    staff = get_current_staff(request, db)
+    if not staff or not role_allowed(staff, "owner", "manager"): return RedirectResponse("/login")
+    supplier = Supplier(id=gen_id(), name=name, contact_name=contact_name, phone=phone, email=email, payment_terms=payment_terms)
+    db.add(supplier)
+    db.commit()
+    return RedirectResponse("/suppliers", status_code=303)
+
+# --- PURCHASE ORDERS ---
+@app.get("/purchase-orders")
+def pos_page(request: Request, db: Session = Depends(get_db)):
+    staff = get_current_staff(request, db)
+    if not staff or not role_allowed(staff, "owner", "manager"): return RedirectResponse("/login")
+    pos = db.query(PurchaseOrder).order_by(PurchaseOrder.created_at.desc()).all()
+    suppliers = db.query(Supplier).all()
+    products = db.query(Product).all()
+    return templates.TemplateResponse("purchase_orders.html", {"staff": staff, "purchase_orders": pos, "suppliers": suppliers, "products": products})
+
+@app.post("/purchase-orders/add")
+def po_add(request: Request, supplier_id: str = Form(...), product_id: list = Form(...), qty: list = Form(...), unit_price: list = Form(...), db: Session = Depends(get_db)):
+    staff = get_current_staff(request, db)
+    if not staff or not role_allowed(staff, "owner", "manager"): return RedirectResponse("/login")
+    service = PurchaseOrderService(db)
+    items = [{"product_id": pid, "qty": int(q), "unit_price": float(p)} for pid, q, p in zip(product_id, qty, unit_price)]
+    service.create_po(supplier_id, items)
+    return RedirectResponse("/purchase-orders", status_code=303)
+
+@app.post("/purchase-orders/{po_id}/send")
+def po_send(request: Request, po_id: str, db: Session = Depends(get_db)):
+    staff = get_current_staff(request, db)
+    if not staff or not role_allowed(staff, "owner", "manager"): return RedirectResponse("/login")
+    PurchaseOrderService(db).send_po(po_id)
+    return RedirectResponse("/purchase-orders", status_code=303)
+
+@app.post("/purchase-orders/{po_id}/receive")
+def po_receive(request: Request, po_id: str, db: Session = Depends(get_db)):
+    staff = get_current_staff(request, db)
+    if not staff or not role_allowed(staff, "owner", "manager"): return RedirectResponse("/login")
+    po = PurchaseOrderService(db).receive_po(po_id)
+    if not po:
+        return HTMLResponse("PO not found or already received.", status_code=400)
+    return RedirectResponse("/purchase-orders", status_code=303)
+
+# --- EXPENSES ---
+@app.get("/expenses")
+def expenses_page(request: Request, db: Session = Depends(get_db)):
+    staff = get_current_staff(request, db)
+    if not staff or not role_allowed(staff, "owner", "manager"): return RedirectResponse("/login")
+    expenses = db.query(Expense).order_by(Expense.date.desc()).all()
+    return templates.TemplateResponse("expenses.html", {"staff": staff, "expenses": expenses})
+
+@app.post("/expenses/add")
+def expense_add(request: Request, description: str = Form(...), amount: float = Form(...), category: str = Form(...), db: Session = Depends(get_db)):
+    staff = get_current_staff(request, db)
+    if not staff: return RedirectResponse("/login")
+    ExpenseService(db).add_expense(description, amount, category, staff.id if staff else None)
+    return RedirectResponse("/expenses", status_code=303)
+
+# --- EMPLOYEES (Staff Management) ---
+@app.get("/employees")
+def employees_page(request: Request, db: Session = Depends(get_db)):
+    staff = get_current_staff(request, db)
+    if not staff or not role_allowed(staff, "owner", "manager"): return RedirectResponse("/login")
+    employees = db.query(Staff).all()
+    return templates.TemplateResponse("staff.html", {"staff": staff, "all_staff": employees})
