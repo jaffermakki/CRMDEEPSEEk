@@ -59,6 +59,25 @@
                         Settings
                     </a>
                     {% endif %}
+                    <!-- Add inside the nav block in base.html -->
+{% if staff.role in ['owner','manager'] %}
+<a href="/suppliers" class="group flex items-center px-4 py-3 text-sm font-medium rounded-lg {{ 'bg-brand-50 text-brand-600' if request.url.path=='/suppliers' else 'text-gray-700 hover:bg-gray-50' }}">
+    <i data-lucide="truck" class="mr-3 h-5 w-5 flex-shrink-0 text-gray-400 group-hover:text-gray-500"></i>
+    Suppliers
+</a>
+<a href="/purchase-orders" class="group flex items-center px-4 py-3 text-sm font-medium rounded-lg {{ 'bg-brand-50 text-brand-600' if request.url.path=='/purchase-orders' else 'text-gray-700 hover:bg-gray-50' }}">
+    <i data-lucide="clipboard-list" class="mr-3 h-5 w-5 flex-shrink-0 text-gray-400 group-hover:text-gray-500"></i>
+    Purchase Orders
+</a>
+<a href="/expenses" class="group flex items-center px-4 py-3 text-sm font-medium rounded-lg {{ 'bg-brand-50 text-brand-600' if request.url.path=='/expenses' else 'text-gray-700 hover:bg-gray-50' }}">
+    <i data-lucide="receipt" class="mr-3 h-5 w-5 flex-shrink-0 text-gray-400 group-hover:text-gray-500"></i>
+    Expenses
+</a>
+<a href="/employees" class="group flex items-center px-4 py-3 text-sm font-medium rounded-lg {{ 'bg-brand-50 text-brand-600' if request.url.path=='/employees' else 'text-gray-700 hover:bg-gray-50' }}">
+    <i data-lucide="users-2" class="mr-3 h-5 w-5 flex-shrink-0 text-gray-400 group-hover:text-gray-500"></i>
+    Employees
+</a>
+{% endif %}
                 </nav>
                 <div class="flex-shrink-0 border-t border-gray-200 p-4">
                     <div class="flex items-center">
