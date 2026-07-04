@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Request, Depends
-from fastapi.responses import RedirectResponse, HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
@@ -10,35 +10,55 @@ from core.database import get_db, engine
 from core.config import settings
 from modules.inventory.services import ProductService
 from modules.pos.services import POSService
-# ... other modules
+from modules.repairs.services import RepairService
+from modules.auth.services import AuthService
+from auth import get_current_staff, role_allowed
 
 app = FastAPI(title="TechPro+ CRM V2")
-
-# Static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
-
-# Templates
 templates = Jinja2Templates(directory="templates")
-
-# Middleware
 app.add_middleware(SessionMiddleware, secret_key=settings.SESSION_SECRET)
 
-# ------- Legacy Route Adapters (Original Endpoints preserved) -------
 @app.get("/")
 def dashboard(request: Request, db: Session = Depends(get_db)):
-    # ... exact same logic as before, but using db.query
-    return templates.TemplateResponse("dashboard.html", {...})
+    staff = get_current_staff(request, db)
+    if not staff: return RedirectResponse("/login")
+    # Service calls to gather analytics...
+    return templates.TemplateResponse("dashboard.html", {"staff": staff, "sales_today": 0, "repairs_today": 0, ...})
 
 @app.get("/pos")
-def pos_page(request: Request, db: Session = Depends(get_db)):
-    # ... exact same logic
-    return templates.TemplateResponse("pos.html", {...})
-
-# Notice: I am not moving the actual logic yet, but in the subsequent step,
-# I will replace the inline logic with calls to POSService and ProductService.
+def pos(request: Request, db: Session = Depends(get_db)):
+    staff = get_current_staff(request, db)
+    if not staff: return RedirectResponse("/login")
+    products = db.query(Product).all()
+    cart = request.session.get("cart", [])
+    # Calculate taxes...
+    return templates.TemplateResponse("pos.html", {"staff": staff, "products": products, "cart": cart, "subtotal": 0, "tax": 0, "total": 0})
 
 @app.post("/pos/scan")
-def pos_scan(request: Request, sku: str = Form(...), db: Session = Depends(get_db)):
-    # ... exact same logic, but internally we can now do:
-    # product = ProductService(db).find_by_sku(sku)
-    # ... rest of logic remains identical
+async def pos_scan(request: Request, sku: str = Form(...), db: Session = Depends(get_db)):
+    product = db.query(Product).filter(Product.sku == sku).first()
+    cart = request.session.get("cart", [])
+    if product:
+        cart.append({"id": product.id, "name": product.name, "price": product.price, "qty": 1})
+        request.session["cart"] = cart
+    return RedirectResponse("/pos", status_code=303)
+
+@app.get("/repairs")
+def repairs(request: Request, db: Session = Depends(get_db)):
+    staff = get_current_staff(request, db)
+    if not staff: return RedirectResponse("/login")
+    repairs = db.query(Repair).all()
+    columns = {s: [] for s in ['RECEIVED', 'DIAGNOSING', 'WAITING', 'REPAIRING', 'READY']}
+    for r in repairs:
+        if r.status in columns: columns[r.status].append(r)
+    return templates.TemplateResponse("repairs.html", {"staff": staff, "columns": columns})
+
+@app.post("/repairs/add")
+def add_repair(request: Request, name: str = Form(...), phone: str = Form(...), brand: str = Form(""), model: str = Form(""), description: str = Form(""), db: Session = Depends(get_db)):
+    staff = get_current_staff(request, db)
+    # Logic to create customer and repair ticket...
+    return RedirectResponse("/repairs", status_code=303)
+
+@app.get("/login")
+def login_page(request: Request): return templates.TemplateResponse("login.html", {"error": None})
