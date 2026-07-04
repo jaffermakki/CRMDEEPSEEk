@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="flex justify-between items-center mb-6">
+    <h1 class="text-2xl font-bold text-gray-900">Purchase Orders</h1>
+    <button class="btn-primary" onclick="document.getElementById('newPOModal').classList.remove('hidden')">+ Create PO</button>
+</div>
+
+<div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+    <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">PO #</th>
+                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Supplier</th>
+                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Total</th>
+                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Status</th>
+                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Date</th>
+                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Actions</th>
+            </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+            {% for po in purchase_orders %}
+            <tr>
+                <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ po.po_number }}</td>
+                <td class="px-6 py-4 text-sm text-gray-500">{{ po.supplier.name }}</td>
+                <td class="px-6 py-4 text-sm font-mono font-bold">${{ "%.2f"|format(po.total) }}</td>
+                <td class="px-6 py-4 text-sm">
+                    <span class="px-2 py-1 rounded-full text-xs font-semibold 
+                        {{ 'bg-gray-100 text-gray-800' if po.status == 'DRAFT' else 'bg-blue-100 text-blue-800' if po.status == 'SENT' else 'bg-green-100 text-green-800' }}">
+                        {{ po.status }}
+                    </span>
+                </td>
+                <td class="px-6 py-4 text-sm text-gray-500">{{ po.created_at.strftime('%b %d, %Y') }}</td>
+                <td class="px-6 py-4 text-sm flex gap-2">
+                    {% if po.status == 'DRAFT' %}
+                    <form method="post" action="/purchase-orders/{{ po.id }}/send"><button class="text-brand-600 hover:text-brand-800">Send</button></form>
+                    {% elif po.status == 'SENT' %}
+                    <form method="post" action="/purchase-orders/{{ po.id }}/receive"><button class="text-green-600 hover:text-green-800">Receive</button></form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- New PO Modal (Simplified for demo) -->
+<div id="newPOModal" class="hidden fixed inset-0 z-50 bg-black bg-opacity-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <h2 class="text-xl font-bold mb-4">Create Purchase Order</h2>
+        <form method="post" action="/purchase-orders/add">
+            <div class="mb-4"><label class="block text-sm font-medium">Supplier</label>
+                <select name="supplier_id" required class="w-full border rounded-lg p-2">
+                    {% for s in suppliers %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
+                </select>
+            </div>
+            <div id="po-items-container" class="space-y-3">
+                <div class="flex gap-2">
+                    <select name="product_id" class="flex-1 border rounded-lg p-2">
+                        {% for p in products %}<option value="{{ p.id }}">{{ p.name }} ({{ p.sku }})</option>{% endfor %}
+                    </select>
+                    <input name="qty" type="number" placeholder="Qty" class="w-20 border rounded-lg p-2" required>
+                    <input name="unit_price" type="number" step="0.01" placeholder="Price" class="w-24 border rounded-lg p-2" required>
+                </div>
+            </div>
+            <button type="button" onclick="addPOItem()" class="text-sm text-brand-600 mt-2">+ Add another item</button>
+            <div class="mt-4 flex gap-3 justify-end">
+                <button type="button" onclick="document.getElementById('newPOModal').classList.add('hidden')" class="btn-secondary">Cancel</button>
+                <button type="submit" class="btn-primary">Create PO</button>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+function addPOItem() {
+    const container = document.getElementById('po-items-container');
+    const newItem = document.createElement('div');
+    newItem.className = 'flex gap-2';
+    newItem.innerHTML = container.firstElementChild.innerHTML;
+    container.appendChild(newItem);
+}
+</script>
+{% endblock %}
