@@ -1,0 +1,10 @@
+celery
+redis
+httpx
+python-multipart
+itsdangerous
+apscheduler
+psycopg2-binary
+cryptography
+pydantic
+python-jose[cryptography]
