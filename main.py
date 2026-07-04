@@ -140,3 +140,26 @@ def employees_page(request: Request, db: Session = Depends(get_db)):
     if not staff or not role_allowed(staff, "owner", "manager"): return RedirectResponse("/login")
     employees = db.query(Staff).all()
     return templates.TemplateResponse("staff.html", {"staff": staff, "all_staff": employees})
+from modules.warranty.services import WarrantyService
+from modules.warranty.models import Warranty
+
+@app.get("/warranties")
+def warranties_page(request: Request, db: Session = Depends(get_db)):
+    staff = get_current_staff(request, db)
+    if not staff: return RedirectResponse("/login")
+    
+    warranties = db.query(Warranty).order_by(Warranty.end_date).all()
+    return templates.TemplateResponse("warranties.html", {"staff": staff, "warranties": warranties})
+
+@app.post("/repairs/{repair_id}/warranty/add")
+def add_repair_warranty(request: Request, repair_id: str, duration_days: int = Form(90), db: Session = Depends(get_db)):
+    staff = get_current_staff(request, db)
+    if not staff: return RedirectResponse("/login")
+    
+    from modules.repairs.models import Repair
+    repair = db.get(Repair, repair_id)
+    if not repair or not repair.customer_id:
+        return HTMLResponse("Repair not found or missing customer.", status_code=400)
+    
+    WarrantyService(db).create_repair_warranty(repair.customer_id, repair_id, duration_days)
+    return RedirectResponse(f"/warranties", status_code=303)
