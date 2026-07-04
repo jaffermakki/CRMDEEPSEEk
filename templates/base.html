@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}TechPro+ CRM{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <script src="/static/js/htmx.min.js"></script>
+    <script defer src="/static/js/alpine.min.js"></script>
+    <script src="/static/js/lucide.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            lucide.createIcons();
+        });
+    </script>
+</head>
+<body class="h-full">
+    {% if staff %}
+    <div x-data="{ mobileMenuOpen: false }" class="flex h-full overflow-hidden">
+        <!-- Mobile sidebar backdrop -->
+        <div x-show="mobileMenuOpen" x-cloak class="fixed inset-0 z-40 bg-gray-600 bg-opacity-75 lg:hidden" @click="mobileMenuOpen = false"></div>
+        
+        <!-- Sidebar -->
+        <aside class="hidden lg:flex lg:flex-shrink-0 lg:w-64">
+            <div class="flex flex-col w-full bg-white border-r border-gray-200">
+                <div class="h-16 flex items-center px-6 border-b border-gray-100">
+                    <span class="text-xl font-bold text-brand-500">🛠️ TechPro+</span>
+                </div>
+                <nav class="flex-1 px-4 py-6 space-y-1">
+                    {% set nav_items = [
+                        ('/', 'Dashboard', 'layout-dashboard'),
+                        ('/pos', 'Point of Sale', 'shopping-cart'),
+                        ('/repairs', 'Repairs', 'wrench'),
+                        ('/invoices', 'Invoices', 'receipt'),
+                        ('/reports', 'Reports', 'bar-chart-2'),
+                        ('/cashup', 'Cash Up', 'coins'),
+                        ('/products', 'Products', 'package'),
+                        ('/customers', 'Customers', 'users'),
+                    ] %}
+                    {% for url, label, icon in nav_items %}
+                    <a href="{{ url }}" class="group flex items-center px-4 py-3 text-sm font-medium rounded-lg {{ 'bg-brand-50 text-brand-600' if request.url.path.startswith(url) else 'text-gray-700 hover:bg-gray-50' }}">
+                        <i data-lucide="{{ icon }}" class="mr-3 h-5 w-5 flex-shrink-0 text-gray-400 group-hover:text-gray-500 {{ 'text-brand-600' if request.url.path.startswith(url) else '' }}"></i>
+                        {{ label }}
+                    </a>
+                    {% endfor %}
+                    {% if staff.role in ['owner','manager'] %}
+                    <a href="/staff" class="group flex items-center px-4 py-3 text-sm font-medium rounded-lg {{ 'bg-brand-50 text-brand-600' if request.url.path=='/staff' else 'text-gray-700 hover:bg-gray-50' }}">
+                        <i data-lucide="briefcase" class="mr-3 h-5 w-5 flex-shrink-0 text-gray-400 group-hover:text-gray-500"></i>
+                        Staff
+                    </a>
+                    <a href="/audit" class="group flex items-center px-4 py-3 text-sm font-medium rounded-lg {{ 'bg-brand-50 text-brand-600' if request.url.path=='/audit' else 'text-gray-700 hover:bg-gray-50' }}">
+                        <i data-lucide="file-clock" class="mr-3 h-5 w-5 flex-shrink-0 text-gray-400 group-hover:text-gray-500"></i>
+                        Audit Log
+                    </a>
+                    {% endif %}
+                    {% if staff.role=='owner' %}
+                    <a href="/settings" class="group flex items-center px-4 py-3 text-sm font-medium rounded-lg {{ 'bg-brand-50 text-brand-600' if request.url.path=='/settings' else 'text-gray-700 hover:bg-gray-50' }}">
+                        <i data-lucide="settings" class="mr-3 h-5 w-5 flex-shrink-0 text-gray-400 group-hover:text-gray-500"></i>
+                        Settings
+                    </a>
+                    {% endif %}
+                </nav>
+                <div class="flex-shrink-0 border-t border-gray-200 p-4">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <span class="inline-block h-8 w-8 rounded-full bg-brand-500 text-white flex items-center justify-center font-bold text-sm">{{ staff.name[0] }}</span>
+                        </div>
+                        <div class="ml-3">
+                            <p class="text-sm font-medium text-gray-700">{{ staff.name }}</p>
+                            <p class="text-xs text-gray-500 capitalize">{{ staff.role }}</p>
+                        </div>
+                        <div class="ml-auto">
+                            <a href="/logout" class="text-xs font-medium text-red-600 hover:text-red-700">Log out</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Mobile Header -->
+        <div class="lg:hidden fixed top-0 inset-x-0 z-30 bg-white border-b border-gray-200 h-16 flex items-center px-4">
+            <button @click="mobileMenuOpen = true" class="text-gray-500 hover:text-gray-600">
+                <i data-lucide="menu" class="h-6 w-6"></i>
+            </button>
+            <span class="ml-4 text-lg font-bold text-brand-500">TechPro+</span>
+        </div>
+
+        <!-- Main Content -->
+        <main class="flex-1 min-w-0 overflow-y-auto pt-16 lg:pt-0">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+    {% else %}
+        {% block bare_content %}{% endblock %}
+    {% endif %}
+</body>
+</html>
