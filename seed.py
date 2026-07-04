@@ -38,3 +38,21 @@ db.add(c1)
 
 db.commit()
 print("✅ Fresh database seeded with demo data.")
+
+# Add this to the end of your seed.py
+from modules.warranty.models import Warranty, WarrantyType
+from datetime import date, timedelta
+
+# ... existing seed code ...
+
+# Create a product warranty expiring in 6 days (to trigger automation)
+future_warranty = Warranty(
+    id="w1",
+    reference_type=WarrantyType.PRODUCT,
+    reference_id="p1",
+    customer_id="c1",
+    start_date=date.today() - timedelta(days=359),
+    end_date=date.today() + timedelta(days=6) # Expires in 6 days
+)
+db.add(future_warranty)
+db.commit()
