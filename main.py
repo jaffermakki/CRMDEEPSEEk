@@ -163,3 +163,16 @@ def add_repair_warranty(request: Request, repair_id: str, duration_days: int = F
     
     WarrantyService(db).create_repair_warranty(repair.customer_id, repair_id, duration_days)
     return RedirectResponse(f"/warranties", status_code=303)
+from core.dependencies import get_current_tenant
+from modules.tenants.models import Tenant
+
+@app.get("/")
+def dashboard(
+    request: Request,
+    db: Session = Depends(get_db),
+    tenant: Tenant = Depends(get_current_tenant),
+    staff: Staff = Depends(require_permission("dashboard"))
+):
+    # Now use tenant to filter everything
+    products = db.query(Product).filter(Product.tenant_id == tenant.id).all()
+    return templates.TemplateResponse("dashboard.html", {...})
