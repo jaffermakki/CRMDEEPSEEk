@@ -1,17 +1,17 @@
-import os
-from celery import Celery
+from celery.schedules import crontab
 
-REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
-
-app = Celery("techpro_crm", broker=REDIS_URL, backend=REDIS_URL)
-app.conf.update(
-    task_serializer="json",
-    accept_content=["json"],
-    result_serializer="json",
-    timezone="UTC",
-    enable_utc=True,
-    beat_schedule={}  # We will populate this later
-)
-
-# Discover tasks from modules
-app.autodiscover_tasks(["modules.automation", "modules.notifications"])
+# Update the beat_schedule in celery_app.py
+app.conf.beat_schedule = {
+    "check-warranties-daily": {
+        "task": "modules.automation.tasks.task_check_warranty_expiry",
+        "schedule": crontab(hour=8, minute=0),  # Runs every day at 8 AM
+    },
+    "generate-reorder-pos-daily": {
+        "task": "modules.automation.tasks.task_generate_reorder_pos",
+        "schedule": crontab(hour=9, minute=0), # Runs every day at 9 AM
+    },
+    "send-daily-digest": {
+        "task": "modules.automation.tasks.task_send_daily_digest",
+        "schedule": crontab(hour=21, minute=0), # Runs every day at 9 PM
+    },
+}
