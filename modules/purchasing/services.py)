@@ -1,0 +1,80 @@
+from sqlalchemy.orm import Session
+from modules.inventory.models import Product, StockMovement
+from modules.purchasing.models import PurchaseOrder, PurchaseOrderItem
+from datetime import datetime
+import uuid
+
+def gen_id():
+    return uuid.uuid4().hex[:12]
+
+class PurchaseOrderService:
+    def __init__(self, db: Session):
+        self.db = db
+
+    def create_po(self, supplier_id: str, items: list):
+        """items = [{'product_id': '...', 'qty': 10, 'unit_price': 15.0}]"""
+        po = PurchaseOrder(
+            id=gen_id(),
+            po_number=f"PO-{datetime.utcnow().strftime('%Y%m%d')}-{uuid.uuid4().hex[:4]}",
+            supplier_id=supplier_id,
+            status="DRAFT",
+            total=0.0
+        )
+        total = 0.0
+        for item in items:
+            po_item = PurchaseOrderItem(
+                id=gen_id(),
+                product_id=item["product_id"],
+                qty=item["qty"],
+                unit_price=item["unit_price"]
+            )
+            total += item["qty"] * item["unit_price"]
+            po.items.append(po_item)
+        
+        po.total = total
+        self.db.add(po)
+        self.db.commit()
+        self.db.refresh(po)
+        return po
+
+    def send_po(self, po_id: str):
+        po = self.db.get(PurchaseOrder, po_id)
+        if po and po.status == "DRAFT":
+            po.status = "SENT"
+            self.db.commit()
+        return po
+
+    def receive_po(self, po_id: str):
+        po = self.db.get(PurchaseOrder, po_id)
+        if not po or po.status != "SENT":
+            return None
+
+        # Process each item
+        for item in po.items:
+            product = self.db.get(Product, item.product_id)
+            if product:
+                # Increase stock
+                product.stock += item.qty
+                product.reserved_stock = max(0, product.reserved_stock - item.qty)
+                product.last_movement_at = datetime.utcnow()
+                
+                # Log Stock Movement
+                movement = StockMovement(
+                    id=gen_id(),
+                    product_id=product.id,
+                    qty=item.qty,
+                    type="RESTOCK",
+                    reference_id=po.id
+                )
+                self.db.add(movement)
+
+        # Update Supplier Balance
+        supplier = po.supplier
+        supplier.balance += po.total
+
+        # Complete PO
+        po.status = "RECEIVED"
+        po.received_at = datetime.utcnow()
+        self.db.commit()
+        self.db.refresh(po)
+        return po
