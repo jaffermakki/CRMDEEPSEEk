@@ -8,3 +8,5 @@ psycopg2-binary
 cryptography
 pydantic
 python-jose[cryptography]
+celery[redis]
+redis
